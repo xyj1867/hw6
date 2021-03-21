@@ -6,6 +6,7 @@
 from requests_oauthlib import OAuth1
 import json
 import requests
+import operator
 
 import hw6_secrets_starter as secrets # file that contains your OAuth credentials
 
@@ -97,7 +98,11 @@ def construct_unique_key(baseurl, params):
         the unique key as a string
     '''
     #TODO Implement function
-    pass
+    result = baseurl + '?'
+    for k, v in params.items():
+        result += ("_" + str(k) + "_" + str(v))
+    
+    return result
 
 
 def make_request(baseurl, params):
@@ -117,7 +122,9 @@ def make_request(baseurl, params):
         a dictionary
     '''
     #TODO Implement function
-    pass
+    auth = OAuth1(client_key, client_secret, access_token, access_token_secret)
+    response = requests.get(baseurl, params=params,auth=auth) 
+    return json.loads(response.text)
 
 
 def make_request_with_cache(baseurl, hashtag, count):
@@ -149,7 +156,20 @@ def make_request_with_cache(baseurl, hashtag, count):
         JSON
     '''
     #TODO Implement function
-    pass
+    params = {
+        'q': hashtag,
+        'count': count
+    }
+    cache_key = construct_unique_key(baseurl=baseurl, params=params)
+    if cache_key in CACHE_DICT.keys():
+        print("fetching cached data")
+        return json.loads(CACHE_DICT[cache_key])
+    else:
+        print("making new request")
+        response = make_request(baseurl, params)
+        CACHE_DICT[cache_key] = json.dumps(response)
+        save_cache(CACHE_DICT)
+        return response
 
 
 def find_most_common_cooccurring_hashtag(tweet_data, hashtag_to_ignore):
@@ -172,7 +192,20 @@ def find_most_common_cooccurring_hashtag(tweet_data, hashtag_to_ignore):
 
     '''
     # TODO: Implement function 
-    pass
+    hashtag_to_ignore = hashtag_to_ignore[1:]
+    tweets_list = tweet_data["statuses"]
+    co_occurs = {}
+    for tweet in tweets_list:
+        for hashtag in tweet['entities']['hashtags']:
+            hash_text = hashtag['text']
+            if hash_text != hashtag_to_ignore:
+                if hash_text in co_occurs.keys():
+                    co_occurs[hash_text] += 1
+                else:
+                    co_occurs[hash_text] = 1
+    
+    return '#' + max(co_occurs.items(), key=operator.itemgetter(1))[0]
+    
     ''' Hint: In case you're confused about the hashtag_to_ignore 
     parameter, we want to ignore the hashtag we queried because it would 
     definitely be the most occurring hashtag, and we're trying to find 
@@ -180,7 +213,7 @@ def find_most_common_cooccurring_hashtag(tweet_data, hashtag_to_ignore):
     we're essentially looking for the second most commonly occurring 
     hashtags).'''
 
-    
+
 
 if __name__ == "__main__":
     if not client_key or not client_secret:
