@@ -18,6 +18,9 @@ client_secret = secrets.TWITTER_API_SECRET
 access_token = secrets.TWITTER_ACCESS_TOKEN
 access_token_secret = secrets.TWITTER_ACCESS_TOKEN_SECRET
 
+
+
+
 oauth = OAuth1(client_key,
             client_secret=client_secret,
             resource_owner_key=access_token,
@@ -98,8 +101,9 @@ def construct_unique_key(baseurl, params):
         the unique key as a string
     '''
     #TODO Implement function
-    result = baseurl + '?'
-    for k, v in params.items():
+    result = baseurl
+    params_order = dict(sorted(params.copy().items()))
+    for k, v in params_order.items():
         result += ("_" + str(k) + "_" + str(v))
     
     return result
@@ -161,13 +165,14 @@ def make_request_with_cache(baseurl, hashtag, count):
         'count': count
     }
     cache_key = construct_unique_key(baseurl=baseurl, params=params)
+    CACHE_DICT = open_cache()
     if cache_key in CACHE_DICT.keys():
         print("fetching cached data")
-        return json.loads(CACHE_DICT[cache_key])
+        return CACHE_DICT[cache_key]
     else:
         print("making new request")
         response = make_request(baseurl, params)
-        CACHE_DICT[cache_key] = json.dumps(response)
+        CACHE_DICT[cache_key] = response
         save_cache(CACHE_DICT)
         return response
 
@@ -197,13 +202,14 @@ def find_most_common_cooccurring_hashtag(tweet_data, hashtag_to_ignore):
     co_occurs = {}
     for tweet in tweets_list:
         for hashtag in tweet['entities']['hashtags']:
-            hash_text = hashtag['text']
-            if hash_text != hashtag_to_ignore:
+            hash_text = hashtag['text'].lower()
+            if hash_text.lower() != hashtag_to_ignore:
                 if hash_text in co_occurs.keys():
                     co_occurs[hash_text] += 1
                 else:
                     co_occurs[hash_text] = 1
-    
+
+    print('#' + max(co_occurs.items(), key=operator.itemgetter(1))[0])
     return '#' + max(co_occurs.items(), key=operator.itemgetter(1))[0]
     
     ''' Hint: In case you're confused about the hashtag_to_ignore 
